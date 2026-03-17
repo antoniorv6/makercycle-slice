@@ -1,0 +1,12 @@
+services:
+  slicer:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - API_KEY=${API_KEY:-changeme}
+      - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-50}
+      - SLICE_TIMEOUT_SECONDS=${SLICE_TIMEOUT_SECONDS:-120}
+    volumes:
+      - /tmp/makercycle_slicer:/tmp/makercycle_slicer
+    restart: unless-stopped
