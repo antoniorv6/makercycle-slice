@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     bzip2 \
     ca-certificates \
+    curl \
+    jq \
     libgl1 \
     libglib2.0-0 \
     libgtk-3-0 \
@@ -14,10 +16,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfuse2 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PrusaSlicer from AppImage (more reliable than tar.bz2)
-ARG PRUSASLICER_VERSION=2.9.1
-RUN wget -q "https://github.com/prusa3d/PrusaSlicer/releases/download/version_${PRUSASLICER_VERSION}/PrusaSlicer-${PRUSASLICER_VERSION}+linux-x64-GTK3-202502270843.AppImage" \
-    -O /opt/prusaslicer.AppImage \
+# Install PrusaSlicer - download the correct AppImage from GitHub releases API
+RUN ASSET_URL=$(curl -s https://api.github.com/repos/prusa3d/PrusaSlicer/releases/tags/version_2.9.1 \
+    | jq -r '.assets[] | select(.name | test("linux-x64-GTK3.*\\.AppImage$")) | .browser_download_url' \
+    | head -1) \
+    && echo "Downloading: $ASSET_URL" \
+    && wget -q "$ASSET_URL" -O /opt/prusaslicer.AppImage \
     && chmod +x /opt/prusaslicer.AppImage \
     && cd /opt && ./prusaslicer.AppImage --appimage-extract \
     && ln -s /opt/squashfs-root/usr/bin/prusa-slicer /usr/local/bin/prusa-slicer \
