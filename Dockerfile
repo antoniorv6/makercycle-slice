@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     libfuse2 \
     xvfb \
+    xauth \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PrusaSlicer 2.8.1 (last version with Linux binary on GitHub)
