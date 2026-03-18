@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg62-turbo \
     libgomp1 \
     libfuse2 \
+    libwebkit2gtk-4.0-37 \
     xvfb \
     xauth \
     && rm -rf /var/lib/apt/lists/*
@@ -27,15 +28,17 @@ RUN wget -q "https://github.com/prusa3d/PrusaSlicer/releases/download/version_2.
     && cd /opt && ./prusaslicer.AppImage --appimage-extract \
     && rm /opt/prusaslicer.AppImage
 
-# List extracted structure for debugging, then create wrapper
-RUN echo "=== AppImage structure ===" \
-    && ls -la /opt/squashfs-root/usr/bin/ 2>/dev/null || true \
-    && find /opt/squashfs-root -maxdepth 4 -name "prusa-slicer*" -o -name "PrusaSlicer*" | head -20 \
-    && echo "=== End structure ==="
+# Debug: list AppImage binary structure
+RUN echo "=== AppImage binaries ===" \
+    && find /opt/squashfs-root -maxdepth 4 -type f \( -name "prusa-slicer*" -o -name "PrusaSlicer*" \) 2>/dev/null \
+    && echo "=== usr/bin contents ===" \
+    && ls -la /opt/squashfs-root/usr/bin/ 2>/dev/null | head -20 \
+    && echo "=== End ==="
 
-# Create wrapper - use the AppRun which handles LD_LIBRARY_PATH internally
+# Create wrapper - call binary directly (AppRun has path bugs with --appimage-extract)
 RUN echo '#!/bin/bash' > /usr/local/bin/prusa-slicer \
-    && echo 'exec xvfb-run -a /opt/squashfs-root/AppRun "$@"' >> /usr/local/bin/prusa-slicer \
+    && echo 'export LD_LIBRARY_PATH="/opt/squashfs-root/usr/lib:${LD_LIBRARY_PATH}"' >> /usr/local/bin/prusa-slicer \
+    && echo 'exec xvfb-run -a /opt/squashfs-root/usr/bin/prusa-slicer "$@"' >> /usr/local/bin/prusa-slicer \
     && chmod +x /usr/local/bin/prusa-slicer \
     && cat /usr/local/bin/prusa-slicer
 
