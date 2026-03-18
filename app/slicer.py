@@ -27,19 +27,23 @@ async def slice_3mf(file_bytes: bytes, file_name: str) -> SliceEstimate:
     PrusaSlicer will use that profile if present, otherwise fall back to default.
     """
     with tempfile.TemporaryDirectory(prefix="makercycle_slicer_") as tmpdir:
-        input_path = Path(tmpdir) / file_name
+        # Sanitize filename to avoid path issues
+        safe_name = Path(file_name).name.replace(" ", "_")
+        if not safe_name.endswith(".3mf"):
+            safe_name = "model.3mf"
+        input_path = Path(tmpdir) / safe_name
         input_path.write_bytes(file_bytes)
 
         # First, try to slice using the embedded profile in the .3mf
         output_path = Path(tmpdir) / "output.gcode"
-        result = await _run_prusaslicer(input_path, output_path, use_default_profile=False)
+        result, last_err = await _run_prusaslicer(input_path, output_path, use_default_profile=False)
 
         # If that fails, try with default profile
         if result is None:
-            result = await _run_prusaslicer(input_path, output_path, use_default_profile=True)
+            result, last_err = await _run_prusaslicer(input_path, output_path, use_default_profile=True)
 
         if result is None:
-            raise SlicingError("PrusaSlicer failed to slice the model")
+            raise SlicingError(f"PrusaSlicer failed: {last_err[:300] if last_err else 'unknown error'}")
 
         # Parse the generated gcode(s)
         plates = _collect_plates(tmpdir, output_path)
@@ -65,8 +69,8 @@ async def _run_prusaslicer(
     input_path: Path,
     output_path: Path,
     use_default_profile: bool,
-) -> str | None:
-    """Run PrusaSlicer CLI and return stdout, or None on failure."""
+) -> tuple[str | None, str]:
+    """Run PrusaSlicer CLI and return (stdout, stderr). stdout is None on failure."""
     cmd = [
         PRUSA_SLICER_BIN,
         "--export-gcode",
@@ -87,13 +91,16 @@ async def _run_prusaslicer(
             proc.communicate(), timeout=SLICE_TIMEOUT
         )
 
+        err_msg = stderr.decode("utf-8", errors="replace")
+        out_msg = stdout.decode("utf-8", errors="replace")
+
         if proc.returncode == 0:
-            return stdout.decode("utf-8", errors="replace")
+            return out_msg, err_msg
 
         # Log stderr for debugging
-        err_msg = stderr.decode("utf-8", errors="replace")
-        print(f"PrusaSlicer stderr: {err_msg[:500]}")
-        return None
+        print(f"PrusaSlicer failed (code {proc.returncode}): {err_msg[:500]}")
+        print(f"PrusaSlicer stdout: {out_msg[:500]}")
+        return None, err_msg
 
     except asyncio.TimeoutError:
         proc.kill()

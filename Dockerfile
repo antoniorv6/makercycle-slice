@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bzip2 \
     ca-certificates \
     libgl1 \
+    libglu1-mesa \
     libglib2.0-0 \
     libgtk-3-0 \
     libpng16-16 \
@@ -20,7 +21,9 @@ RUN wget -q "https://github.com/prusa3d/PrusaSlicer/releases/download/version_2.
     -O /opt/prusaslicer.AppImage \
     && chmod +x /opt/prusaslicer.AppImage \
     && cd /opt && ./prusaslicer.AppImage --appimage-extract \
-    && ln -s /opt/squashfs-root/usr/bin/prusa-slicer /usr/local/bin/prusa-slicer \
+    && ls -la /opt/squashfs-root/usr/bin/ \
+    && find /opt/squashfs-root -name "prusa-slicer" -o -name "PrusaSlicer" | head -10 \
+    && ln -sf /opt/squashfs-root/usr/bin/prusa-slicer /usr/local/bin/prusa-slicer \
     && rm /opt/prusaslicer.AppImage
 
 # Set up Python app

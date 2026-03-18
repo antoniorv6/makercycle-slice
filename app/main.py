@@ -2,6 +2,7 @@
 MakerCycle Slicer API - Cloud slicing service for 3D print cost estimation.
 """
 
+import asyncio
 import os
 from dataclasses import asdict
 
@@ -12,7 +13,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from .slicer import SlicingError, slice_3mf
+from .slicer import PRUSA_SLICER_BIN, SlicingError, slice_3mf
 
 API_KEY = os.environ.get("API_KEY", "changeme")
 MAX_FILE_SIZE_MB = int(os.environ.get("MAX_FILE_SIZE_MB", "50"))
