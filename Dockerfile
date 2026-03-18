@@ -27,12 +27,15 @@ RUN wget -q "https://github.com/prusa3d/PrusaSlicer/releases/download/version_2.
     && cd /opt && ./prusaslicer.AppImage --appimage-extract \
     && rm /opt/prusaslicer.AppImage
 
-# Find the actual binary and create a wrapper that runs with virtual display
-RUN REAL_BIN=$(find /opt/squashfs-root -type f -name "prusa-slicer" | head -1) \
-    && echo "Found PrusaSlicer binary at: $REAL_BIN" \
-    && echo '#!/bin/bash' > /usr/local/bin/prusa-slicer \
-    && echo "export LD_LIBRARY_PATH=/opt/squashfs-root/usr/lib:\$LD_LIBRARY_PATH" >> /usr/local/bin/prusa-slicer \
-    && echo "exec xvfb-run -a $REAL_BIN \"\$@\"" >> /usr/local/bin/prusa-slicer \
+# List extracted structure for debugging, then create wrapper
+RUN echo "=== AppImage structure ===" \
+    && ls -la /opt/squashfs-root/usr/bin/ 2>/dev/null || true \
+    && find /opt/squashfs-root -maxdepth 4 -name "prusa-slicer*" -o -name "PrusaSlicer*" | head -20 \
+    && echo "=== End structure ==="
+
+# Create wrapper - use the AppRun which handles LD_LIBRARY_PATH internally
+RUN echo '#!/bin/bash' > /usr/local/bin/prusa-slicer \
+    && echo 'exec xvfb-run -a /opt/squashfs-root/AppRun "$@"' >> /usr/local/bin/prusa-slicer \
     && chmod +x /usr/local/bin/prusa-slicer \
     && cat /usr/local/bin/prusa-slicer
 
